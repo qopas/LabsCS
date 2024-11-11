@@ -81,10 +81,8 @@ public class PlayfairCipher {
             char b = text.charAt(i + 1);
             int[] posA = findPosition(a);
             int[] posB = findPosition(b);
-
             System.out.println("Pair: " + a + " " + b);
             System.out.println("Positions: (" + posA[0] + "," + posA[1] + ") and (" + posB[0] + "," + posB[1] + ")");
-
             if (posA[0] == posB[0]) { // Same row, wrap around horizontally
                 result.append(matrix[posA[0]][(posA[1] + (isEncryption ? 1 : SIZE - 1)) % SIZE]);
                 result.append(matrix[posB[0]][(posB[1] + (isEncryption ? 1 : SIZE - 1)) % SIZE]);
@@ -94,7 +92,6 @@ public class PlayfairCipher {
             } else { // Rectangle swap, ensure no '-' is used
                 char charA = matrix[posA[0]][posB[1]];
                 char charB = matrix[posB[0]][posA[1]];
-
                 // Handle empty cell issue by adjusting the position if '-' is encountered
                 if (charA == '-') {
                     charA = matrix[0][posB[1]];
