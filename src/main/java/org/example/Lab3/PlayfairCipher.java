@@ -1,111 +1,174 @@
 package org.example.Lab3;
 
-import java.util.Arrays;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.Scanner;
-import java.util.Set;
 
 public class PlayfairCipher {
-    private static char[][] keyMatrix = new char[5][5];
+    private static final String ALPHABET = "AĂÂBCDEFGHIÎJKLMNOPQRSȘTȚUVWXYZ";
+    private static final int SIZE = 6; // 6x6 matrix for Romanian alphabet with 31 letters
 
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("Alege operațiunea (encrypt/decrypt): ");
-        String operation = scanner.nextLine().toLowerCase();
+    private char[][] matrix;
+    private String key;
 
-        System.out.print("Introduceți cheia (minim 7 caractere): ");
-        String key = scanner.nextLine();
+    public PlayfairCipher(String key) {
         if (key.length() < 7) {
-            System.out.println("Eroare: Cheia trebuie să aibă minim 7 caractere.");
-            return;
+            throw new IllegalArgumentException("Key length must be at least 7 characters.");
         }
-
-        System.out.print("Introduceți textul: ");
-        String inputText = scanner.nextLine();
-        inputText = inputText.toUpperCase().replaceAll("[^A-Z]", "").replace("J", "I");
-        if (inputText.isEmpty()) {
-            System.out.println("Eroare: Textul trebuie să conțină doar caractere alfabetice.");
-            return;
-        }
-
-        setupKeyMatrix(key);
-        if (operation.equals("encrypt")) {
-            System.out.println("Text criptat: " + encrypt(inputText));
-        } else if (operation.equals("decrypt")) {
-            System.out.println("Text decriptat: " + decrypt(inputText));
-        } else {
-            System.out.println("Operațiune invalidă.");
-        }
+        this.key = prepareKey(key.toUpperCase());
+        System.out.println("Prepared Key: " + this.key);
+        this.matrix = generateMatrix(this.key);
+        printMatrix();
     }
 
-    private static void setupKeyMatrix(String key) {
-        key = key.toUpperCase().replaceAll("[^A-Z]", "").replace("J", "I");
-        Set<Character> uniqueChars = new LinkedHashSet<>();
-        for (char c : key.toCharArray()) uniqueChars.add(c);
-        for (char c = 'A'; c <= 'Z'; c++) if (c != 'J') uniqueChars.add(c);
+    private String prepareKey(String key) {
+        StringBuilder preparedKey = new StringBuilder();
+        HashSet<Character> seen = new HashSet<>();
+        for (char c : key.toCharArray()) {
+            if (ALPHABET.contains(String.valueOf(c)) && seen.add(c)) {
+                preparedKey.append(c);
+            }
+        }
+        for (char c : ALPHABET.toCharArray()) {
+            if (seen.add(c)) {
+                preparedKey.append(c);
+            }
+        }
+        return preparedKey.toString();
+    }
 
+    private char[][] generateMatrix(String key) {
+        char[][] matrix = new char[SIZE][SIZE];
         int k = 0;
-        for (char c : uniqueChars) {
-            keyMatrix[k / 5][k % 5] = c;
-            k++;
-            if (k == 25) break;
-        }
-    }
-
-    private static String encrypt(String text) {
-        return processText(formatTextForPairs(text), true);
-    }
-
-    private static String decrypt(String text) {
-        return processText(formatTextForPairs(text), false);
-    }
-
-    private static String formatTextForPairs(String text) {
-        StringBuilder formattedText = new StringBuilder();
-        for (int i = 0; i < text.length(); i += 2) {
-            formattedText.append(text.charAt(i));
-            if (i + 1 < text.length()) {
-                char nextChar = text.charAt(i + 1);
-                if (text.charAt(i) == nextChar) {
-                    formattedText.append('X');
-                    i--;
+        for (int i = 0; i < SIZE; i++) {
+            for (int j = 0; j < SIZE; j++) {
+                if (k < key.length()) {
+                    matrix[i][j] = key.charAt(k++);
                 } else {
-                    formattedText.append(nextChar);
+                    matrix[i][j] = '-';
                 }
             }
         }
-        if (formattedText.length() % 2 != 0) formattedText.append('X');
-        return formattedText.toString();
+        return matrix;
     }
 
-    private static String processText(String text, boolean isEncrypt) {
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < text.length(); i += 2) {
-            char char1 = text.charAt(i);
-            char char2 = text.charAt(i + 1);
-            int[] pos1 = findPosition(char1);
-            int[] pos2 = findPosition(char2);
-
-            if (pos1[0] == pos2[0]) {
-                result.append(keyMatrix[pos1[0]][(pos1[1] + (isEncrypt ? 1 : 4)) % 5]);
-                result.append(keyMatrix[pos2[0]][(pos2[1] + (isEncrypt ? 1 : 4)) % 5]);
-            } else if (pos1[1] == pos2[1]) {
-                result.append(keyMatrix[(pos1[0] + (isEncrypt ? 1 : 4)) % 5][pos1[1]]);
-                result.append(keyMatrix[(pos2[0] + (isEncrypt ? 1 : 4)) % 5][pos2[1]]);
-            } else {
-                result.append(keyMatrix[pos1[0]][pos2[1]]);
-                result.append(keyMatrix[pos2[0]][pos1[1]]);
+    private void printMatrix() {
+        System.out.println("Playfair Matrix:");
+        for (char[] row : matrix) {
+            for (char c : row) {
+                System.out.print(c + " ");
             }
+            System.out.println();
         }
+    }
+
+    public String encrypt(String message) {
+        System.out.println("Encrypting message: " + message);
+        return process(message, true);
+    }
+
+    public String decrypt(String cryptogram) {
+        System.out.println("Decrypting cryptogram: " + cryptogram);
+        return process(cryptogram, false);
+    }
+
+    private String process(String text, boolean isEncryption) {
+        text = prepareText(text.toUpperCase());
+        System.out.println("Prepared Text: " + text);
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < text.length(); i += 2) {
+            char a = text.charAt(i);
+            char b = text.charAt(i + 1);
+            int[] posA = findPosition(a);
+            int[] posB = findPosition(b);
+
+            System.out.println("Pair: " + a + " " + b);
+            System.out.println("Positions: (" + posA[0] + "," + posA[1] + ") and (" + posB[0] + "," + posB[1] + ")");
+
+            if (posA[0] == posB[0]) { // Same row, wrap around horizontally
+                result.append(matrix[posA[0]][(posA[1] + (isEncryption ? 1 : SIZE - 1)) % SIZE]);
+                result.append(matrix[posB[0]][(posB[1] + (isEncryption ? 1 : SIZE - 1)) % SIZE]);
+            } else if (posA[1] == posB[1]) { // Same column, wrap around vertically
+                result.append(matrix[(posA[0] + (isEncryption ? 1 : SIZE - 1)) % SIZE][posA[1]]);
+                result.append(matrix[(posB[0] + (isEncryption ? 1 : SIZE - 1)) % SIZE][posB[1]]);
+            } else { // Rectangle swap, ensure no '-' is used
+                char charA = matrix[posA[0]][posB[1]];
+                char charB = matrix[posB[0]][posA[1]];
+
+                // Handle empty cell issue by adjusting the position if '-' is encountered
+                if (charA == '-') {
+                    charA = matrix[0][posB[1]];
+                }
+                if (charB == '-') {
+                    charB = matrix[0][posA[1]];
+                }
+
+                result.append(charA);
+                result.append(charB);
+            }
+
+            System.out.println("Result after processing pair: " + result.toString());
+        }
+
+        System.out.println("Final " + (isEncryption ? "encrypted" : "decrypted") + " text: " + result.toString());
         return result.toString();
     }
 
-    private static int[] findPosition(char ch) {
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                if (keyMatrix[i][j] == ch) return new int[]{i, j};
+
+    private String prepareText(String text) {
+        StringBuilder prepared = new StringBuilder();
+        for (char c : text.toCharArray()) {
+            if (ALPHABET.contains(String.valueOf(c))) {
+                prepared.append(c);
+            } else {
+                System.out.println("Invalid character '" + c + "'. Please use characters within A-Z, a-z.");
             }
         }
-        return null;
+        if (prepared.length() % 2 != 0) {
+            prepared.append('X'); // Padding for odd length
+            System.out.println("Odd length detected, padding with 'X'");
+        }
+        return prepared.toString();
+    }
+
+    private int[] findPosition(char c) {
+        for (int i = 0; i < SIZE; i++) {
+            for (int j = 0; j < SIZE; j++) {
+                if (matrix[i][j] == c) {
+                    return new int[]{i, j};
+                }
+            }
+        }
+        return null; // Should not happen if input is validated
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Enter a key (at least 7 characters): ");
+        String key = scanner.nextLine();
+        PlayfairCipher playfair = new PlayfairCipher(key);
+
+        System.out.print("Choose operation (encrypt/decrypt): ");
+        String operation = scanner.nextLine().toLowerCase();
+
+        System.out.print("Enter your message: ");
+        String text = scanner.nextLine();
+
+        String result;
+        if (operation.equals("encrypt")) {
+            result = playfair.encrypt(text);
+            System.out.println("Encrypted text: " + result);
+        } else if (operation.equals("decrypt")) {
+            result = playfair.decrypt(text);
+            System.out.println("Decrypted text: " + result);
+        } else {
+            System.out.println("Invalid operation. Please choose 'encrypt' or 'decrypt'.");
+        }
+        scanner.close();
+    }
+
+    public char[][] getMatrix() {
+        return matrix;
     }
 }
